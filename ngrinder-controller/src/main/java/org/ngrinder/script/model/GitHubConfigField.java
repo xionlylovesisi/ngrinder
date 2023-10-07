@@ -8,7 +8,7 @@ import static java.util.Arrays.stream;
 @Getter
 @AllArgsConstructor
 public enum GitHubConfigField {
-	NAME("name"), OWNER("owner"), REPO("repo"), ACCESS_TOKEN("access-token"),
+	NAME("name"),TYPE("type"), OWNER("owner"), REPO("repo"), ACCESS_TOKEN("access-token"),
 	BRANCH("branch"), BASE_URL("base-url"), REVISION("revision"), SCRIPT_ROOT("script-root");
 
 	private final String value;

@@ -18,7 +18,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import freemarker.template.Configuration;
 import freemarker.template.DefaultObjectWrapper;
 import freemarker.template.Template;
-import freemarker.template.TemplateNotFoundException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
@@ -33,6 +32,7 @@ import org.ngrinder.model.PerfTest;
 import org.ngrinder.model.User;
 import org.ngrinder.script.model.FileEntry;
 import org.ngrinder.script.model.FileType;
+import org.ngrinder.script.model.GitType;
 import org.ngrinder.script.repository.FileEntryRepository;
 import org.ngrinder.script.repository.GitHubFileEntryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -171,7 +171,7 @@ public abstract class ScriptHandler implements ControllerConstants {
 				File toDir = new File(distDir, calcDistSubPath(basePath, each));
 				processingResult.printf("%s is being written.\n", each.getPath());
 				log.info(format(perfTest, "{} is being written in {}", each.getPath(), toDir));
-				if (isGitHubFileEntry(each)) {
+				if (isGitFileEntry(each)) {
 					gitHubFileEntryRepository.writeContentTo(each.getPath(), toDir);
 				} else {
 					fileEntryRepository.writeContentTo(user, each.getPath(), toDir);
@@ -185,9 +185,13 @@ public abstract class ScriptHandler implements ControllerConstants {
 		prepareDistMore(perfTest, user, scriptEntry, distDir, properties, processingResult);
 	}
 
-	protected boolean isGitHubFileEntry(FileEntry fileEntry) {
+	protected boolean isGitFileEntry(FileEntry fileEntry) {
 		Map<String, String> properties = fileEntry.getProperties();
-		return properties != null && StringUtils.equals(properties.get("scm"), "github");
+		return properties != null &&
+			(
+				StringUtils.equals(properties.get("scm"), GitType.GITHUB.getValue()) ||
+					StringUtils.equals(properties.get("scm"), GitType.GITLAB.getValue())
+			);
 	}
 
 	/**
@@ -223,7 +227,7 @@ public abstract class ScriptHandler implements ControllerConstants {
 	 * @param processingResult processing result holder
 	 */
 	protected void prepareDistMore(PerfTest perfTest, User user, FileEntry script, File distDir,
-	                               PropertiesWrapper properties, ProcessingResultPrintStream processingResult) {
+								   PropertiesWrapper properties, ProcessingResultPrintStream processingResult) {
 	}
 
 	/**
@@ -253,7 +257,7 @@ public abstract class ScriptHandler implements ControllerConstants {
 		List<FileEntry> libFileEntries;
 		List<FileEntry> resourceFileEntries;
 
-		if (isGitHubFileEntry(scriptEntry)) {
+		if (isGitFileEntry(scriptEntry)) {
 			try {
 				libFileEntries = gitHubFileEntryRepository.findAll(path + "lib");
 				resourceFileEntries = gitHubFileEntryRepository.findAll(path + "resources");
@@ -268,7 +272,7 @@ public abstract class ScriptHandler implements ControllerConstants {
 		for (FileEntry eachFileEntry : libFileEntries) {
 			// Skip jython 2.7... it's already included.
 			if (startsWithIgnoreCase(eachFileEntry.getFileName(), "jython-2.7.")
-					|| startsWithIgnoreCase(eachFileEntry.getFileName(), "jython-standalone-2.7.")) {
+				|| startsWithIgnoreCase(eachFileEntry.getFileName(), "jython-standalone-2.7.")) {
 				continue;
 			}
 			FileType fileType = eachFileEntry.getFileType();

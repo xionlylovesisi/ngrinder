@@ -32,8 +32,6 @@ import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.Hibernate;
-import org.kohsuke.github.GHRepository;
-import org.kohsuke.github.GitHub;
 import org.ngrinder.common.constant.ControllerConstants;
 import org.ngrinder.common.constants.GrinderConstants;
 import org.ngrinder.common.exception.PerfTestPrepareException;
@@ -51,7 +49,6 @@ import org.ngrinder.script.handler.ProcessingResultPrintStream;
 import org.ngrinder.script.handler.ScriptHandler;
 import org.ngrinder.script.handler.ScriptHandlerFactory;
 import org.ngrinder.script.model.FileEntry;
-import org.ngrinder.script.model.GitHubConfig;
 import org.ngrinder.script.service.FileEntryService;
 import org.ngrinder.script.service.GitHubFileEntryService;
 import org.ngrinder.service.AbstractPerfTestService;
@@ -74,11 +71,11 @@ import java.util.Map.Entry;
 import static java.lang.Long.parseLong;
 import static java.lang.Long.valueOf;
 import static java.time.Instant.now;
+import static java.util.Arrays.asList;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
-import static org.apache.commons.io.FileUtils.deleteQuietly;
-import static java.util.Arrays.asList;
 import static net.grinder.SingleConsole.REPORT_DATA;
+import static org.apache.commons.io.FileUtils.deleteQuietly;
 import static org.apache.commons.io.FilenameUtils.removeExtension;
 import static org.ngrinder.common.constant.CacheConstants.*;
 import static org.ngrinder.common.constants.MonitorConstants.MONITOR_FILE_PREFIX;
@@ -91,7 +88,8 @@ import static org.ngrinder.common.util.NoOp.noOp;
 import static org.ngrinder.common.util.Preconditions.checkNotEmpty;
 import static org.ngrinder.common.util.Preconditions.checkNotNull;
 import static org.ngrinder.common.util.TypeConvertUtils.cast;
-import static org.ngrinder.model.Status.*;
+import static org.ngrinder.model.Status.PREPARE_DISTRIBUTION;
+import static org.ngrinder.model.Status.getProcessingOrTestingTestStatus;
 import static org.ngrinder.perftest.repository.PerfTestSpecification.*;
 
 /**
@@ -597,18 +595,18 @@ public class PerfTestService extends AbstractPerfTestService implements Controll
 				grinderProperties.remove(GRINDER_PROP_DURATION);
 			}
 			grinderProperties.setProperty(GRINDER_PROP_ETC_HOSTS,
-					StringUtils.defaultIfBlank(perfTest.getTargetHosts(), ""));
+				StringUtils.defaultIfBlank(perfTest.getTargetHosts(), ""));
 			grinderProperties.setBoolean(GRINDER_PROP_USE_CONSOLE, true);
 			if (BooleanUtils.isTrue(perfTest.getUseRampUp())) {
 				grinderProperties.setBoolean(GRINDER_PROP_THREAD_RAMPUP, perfTest.getRampUpType() == RampUp.THREAD);
 				grinderProperties.setInt(GRINDER_PROP_PROCESS_INCREMENT, getSafe(perfTest.getRampUpStep()));
 				grinderProperties.setInt(GRINDER_PROP_PROCESS_INCREMENT_INTERVAL,
-						getSafe(perfTest.getRampUpIncrementInterval()));
+					getSafe(perfTest.getRampUpIncrementInterval()));
 				if (perfTest.getRampUpType() == RampUp.PROCESS) {
 					grinderProperties.setInt(GRINDER_PROP_INITIAL_SLEEP_TIME, getSafe(perfTest.getRampUpInitSleepTime()));
 				} else {
 					grinderProperties.setInt(GRINDER_PROP_INITIAL_THREAD_SLEEP_TIME,
-							getSafe(perfTest.getRampUpInitSleepTime()));
+						getSafe(perfTest.getRampUpInitSleepTime()));
 				}
 				grinderProperties.setInt(GRINDER_PROP_INITIAL_PROCESS, getSafe(perfTest.getRampUpInitCount()));
 			} else {
@@ -656,16 +654,8 @@ public class PerfTestService extends AbstractPerfTestService implements Controll
 		FileEntry scriptEntry;
 
 		if (isGitHubScript(scm)) {
-			String gitHubConfigName = extractGitHubConfigName(scm);
-
-			GitHubConfig gitHubConfig = gitHubFileEntryService.getGitHubConfig(user, gitHubConfigName);
-			GitHub gitHub = gitHubFileEntryService.getGitHubClient(gitHubConfig);
-			GHRepository ghRepository = gitHub.getRepository(gitHubConfig.getOwner() + "/" + gitHubConfig.getRepo());
-
-			String scriptName = perfTest.getScriptName();
-			gitHubFileEntryService.checkoutGitHubScript(perfTest, ghRepository, gitHubConfig);
-			scriptEntry = gitHubFileEntryService.getOne(ghRepository, gitHubConfig, scriptName);
-			gitHubFileEntryService.evictGitHubGroovyProjectScriptTypeCache(ghRepository, scriptName, gitHubConfig.getBranch());
+			String gitConfigName = extractGitHubConfigName(scm);
+			scriptEntry = gitHubFileEntryService.prepareDistribution(user, gitConfigName, perfTest);
 		} else {
 			scriptEntry = checkNotNull(
 				fileEntryService.getOne(user,
@@ -679,7 +669,7 @@ public class PerfTestService extends AbstractPerfTestService implements Controll
 
 		ProcessingResultPrintStream processingResult = new ProcessingResultPrintStream(new ByteArrayOutputStream());
 		handler.prepareDist(perfTest, user, scriptEntry, perfTestDistDirectory, config.getControllerProperties(),
-				processingResult);
+			processingResult);
 		LOGGER.info(format(perfTest, "File write is completed in {}", perfTestDistDirectory));
 		if (!processingResult.isSuccess()) {
 			File logDir = new File(getLogFileDirectory(perfTest), "distribution_log.txt");
@@ -872,7 +862,7 @@ public class PerfTestService extends AbstractPerfTestService implements Controll
 			for (Entry<String, Object> each : statisticData.entrySet()) {
 				String key = each.getKey();
 				if (key.equals("totalStatistics") || key.equals("cumulativeStatistics")
-						|| key.equals("lastSampleStatistics")) {
+					|| key.equals("lastSampleStatistics")) {
 					continue;
 				}
 				tempData.put(key, each.getValue());
@@ -1152,7 +1142,7 @@ public class PerfTestService extends AbstractPerfTestService implements Controll
 			}
 			json = JsonUtils.serialize(systemInfo);
 		}
-		hazelcastService.put(DIST_MAP_NAME_MONITORING , perfTestId , json);
+		hazelcastService.put(DIST_MAP_NAME_MONITORING, perfTestId, json);
 	}
 
 	/**
@@ -1167,7 +1157,7 @@ public class PerfTestService extends AbstractPerfTestService implements Controll
 	 */
 	public int getMonitorGraphInterval(long testId, String targetIP, int imageWidth) {
 		File monitorDataFile = new File(config.getHome().getPerfTestReportDirectory(String.valueOf(testId)),
-				MONITOR_FILE_PREFIX + targetIP + ".data");
+			MONITOR_FILE_PREFIX + targetIP + ".data");
 
 		int pointCount = Math.max(imageWidth, MAX_POINT_COUNT);
 		int interval = 0;
@@ -1419,10 +1409,10 @@ public class PerfTestService extends AbstractPerfTestService implements Controll
 	/**
 	 * Get list that contains test report data as a string.
 	 *
-	 * @param testId   test id
-	 * @param key      report key
+	 * @param testId    test id
+	 * @param key       report key
 	 * @param onlyTotal true if only total show be passed
-	 * @param interval interval to collect data
+	 * @param interval  interval to collect data
 	 * @return list containing label and tps value list
 	 */
 	public Map<String, List<Float>> getReportData(long testId, String key, boolean onlyTotal, int interval) {

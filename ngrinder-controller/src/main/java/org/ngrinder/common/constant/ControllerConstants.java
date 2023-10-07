@@ -82,5 +82,6 @@ public interface ControllerConstants {
 	String PROP_CONTROLLER_ENABLE_STATISTICS = "controller.enable_statistics";
 	String PROP_CONTROLLER_CSV_SEPARATOR = "controller.csv_separator";
 	String PROP_CONTROLLER_GITHUB_BASE_URL = "controller.github_base_url";
+	String PROP_CONTROLLER_GITLAB_BASE_URL = "controller.gitlab_base_url";
 	String PROP_CONTROLLER_IGNORE_TOO_LOW_TPS = "controller.ignore_too_low_tps";
 }

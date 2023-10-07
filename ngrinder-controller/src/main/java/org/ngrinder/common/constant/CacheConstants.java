@@ -45,6 +45,7 @@ public interface CacheConstants {
 
 	String LOCAL_CACHE_GITHUB_SCRIPTS = "github_scripts";
 	String LOCAL_CACHE_GITHUB_GROOVY_PROJECT_SCRIPT_TYPE = "github_groovy_project_script_type";
+	String LOCAL_CACHE_GITLAB_GROOVY_PROJECT_SCRIPT_TYPE = "gitlab_groovy_project_script_type";
 
 	int REGION_CACHE_TIME_TO_LIVE_SECONDS = 20;
 }

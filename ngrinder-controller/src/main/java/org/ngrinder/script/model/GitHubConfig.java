@@ -30,6 +30,7 @@ public class GitHubConfig {
 	public static final int CONFIG_NAME_MAX_LENGTH = 40;
 
 	private String name;
+	private String type;
 	private String owner;
 	private String repo;
 	private String accessToken;
@@ -61,6 +62,14 @@ public class GitHubConfig {
 		return name.equals(gitHubConfig.name);
 	}
 
+	public boolean isGitHub() {
+		return GitType.GITHUB.getValue().equalsIgnoreCase(type);
+	}
+
+	public boolean isGitLab() {
+		return GitType.GITLAB.getValue().equalsIgnoreCase(type);
+	}
+
 	public static class GitHubConfigDeserializer extends JsonDeserializer<GitHubConfig> {
 
 		@Override
@@ -76,10 +85,11 @@ public class GitHubConfig {
 			try {
 				return GitHubConfig.builder()
 					.name(jsonNode.get(NAME.getValue()).asText())
+					.type(defaultIfNull(jsonNode.get(TYPE.getValue()), GitType.GITHUB.getValue()))
 					.owner(jsonNode.get(OWNER.getValue()).asText())
 					.repo(jsonNode.get(REPO.getValue()).asText())
 					.accessToken(jsonNode.get(ACCESS_TOKEN.getValue()).asText())
-					.branch(defaultIfNull(jsonNode.get(BRANCH.getValue()), null))
+					.branch(defaultIfNull(jsonNode.get(BRANCH.getValue()), "main"))
 					.baseUrl(baseUrl)
 					.revision(defaultIfNull(jsonNode.get(REVISION.getValue()), "-1"))
 					.scriptRoot(defaultIfNull(jsonNode.get(SCRIPT_ROOT.getValue()), ""))
@@ -98,7 +108,7 @@ public class GitHubConfig {
 		 * Check base-url configuration value conforms to url format.
 		 *
 		 * @throws InvalidGitHubConfigurationException occurs when Not conform to url format.
-		 * */
+		 */
 		private void checkUrlFormat(String baseUrl) {
 			UrlValidator urlValidator = getInstance();
 			if (!baseUrl.isEmpty() && !urlValidator.isValid(baseUrl)) {
@@ -110,7 +120,7 @@ public class GitHubConfig {
 		 * Check gitHub configuration has unsupported fields.
 		 *
 		 * @throws InvalidGitHubConfigurationException occurs when unsupported field is exist.
-		 * */
+		 */
 		private void checkUnsupportedField(JsonNode jsonNode) {
 			Iterator<Entry<String, JsonNode>> fields = jsonNode.fields();
 			while (fields.hasNext()) {

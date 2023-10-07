@@ -1,5 +1,8 @@
 package org.kohsuke.github;
 
+import org.gitlab4j.api.models.TreeItem;
+import org.ngrinder.script.model.GitHubConfig;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -109,5 +112,26 @@ public class GHTreeEntry {
 			return tree.repo.getTree(sha);
 		else
 			return null;
+	}
+
+	public void setPath(String path) {
+		this.path = path;
+	}
+
+	public void setMode(String mode) {
+		this.mode = mode;
+	}
+
+	public void setType(String type) {
+		this.type = type;
+	}
+
+	public static GHTreeEntry fromGitLabTreeItem(TreeItem treeItem, GitHubConfig gitHubConfig) {
+		GHTreeEntry ghTreeEntry = new GHTreeEntry();
+		ghTreeEntry.setPath(treeItem.getPath());
+		ghTreeEntry.setMode(treeItem.getMode().toLowerCase());
+		ghTreeEntry.setType(treeItem.getType().name().toLowerCase());
+		ghTreeEntry.setSha(gitHubConfig.getBaseUrl()+"/"+gitHubConfig.getOwner()+"/"+gitHubConfig.getRepo()+"/-/blob/"+gitHubConfig.getBranch()+"/"+treeItem.getPath());
+		return ghTreeEntry;
 	}
 }

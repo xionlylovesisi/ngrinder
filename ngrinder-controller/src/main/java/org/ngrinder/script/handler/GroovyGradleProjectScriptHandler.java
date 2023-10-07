@@ -65,7 +65,7 @@ public class GroovyGradleProjectScriptHandler extends GroovyProjectScriptHandler
 	private String gradlePath;
 
 	public GroovyGradleProjectScriptHandler(Config config) {
-		super("groovy_gradle", "", "Groovy Gradle Project", "groovy", "build.gradle", true);
+		super("groovy_gradle", "", "Groovy Gradle Project", "groovy", GRADLE_BUILD_FILE_NAME, true);
 
 		gradlePath = getSafe(getenv(GRADLE_HOME_ENV_NAME), "");
 		if (isNotEmpty(gradlePath)) {

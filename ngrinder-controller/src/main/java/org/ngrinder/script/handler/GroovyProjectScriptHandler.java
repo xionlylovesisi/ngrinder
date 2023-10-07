@@ -58,6 +58,8 @@ public abstract class GroovyProjectScriptHandler extends GroovyScriptHandler imp
 	protected static String JAVA = "src/main/java/";
 	protected static String GROOVY = "src/main/groovy/";
 	protected static String LIB = "lib/";
+	protected static String GRADLE_BUILD_FILE_NAME = "build.gradle";
+	protected static String GRADLE_SETTINGS_FILE_NAME = "settings.gradle";
 
 	private final String buildScriptName;
 
@@ -69,7 +71,7 @@ public abstract class GroovyProjectScriptHandler extends GroovyScriptHandler imp
 
 	/**
 	 * Return a command to copy dependencies specified in the build script to dist directory.
-	 * */
+	 */
 	protected abstract String getCopyDependenciesCommand(File distDir);
 
 	/**
@@ -91,7 +93,7 @@ public abstract class GroovyProjectScriptHandler extends GroovyScriptHandler imp
 			return false;
 		}
 
-		if (isGitHubFileEntry(fileEntry)) {
+		if (isGitFileEntry(fileEntry)) {
 			return StringUtils.equals(fileEntry.getProperties().get("type"), getKey());
 		} else {
 			if (fileEntry.getCreatedBy() == null) {
@@ -191,13 +193,16 @@ public abstract class GroovyProjectScriptHandler extends GroovyScriptHandler imp
 		List<FileEntry> groovyFileEntry;
 		List<FileEntry> libFileEntry;
 
-		if (isGitHubFileEntry(scriptEntry)) {
+		if (isGitFileEntry(scriptEntry)) {
 			try {
 				javaFileEntry = gitHubFileEntryRepository.findAll(basePath + JAVA);
 				resourcesFileEntry = gitHubFileEntryRepository.findAll(basePath + RESOURCES);
 				groovyFileEntry = gitHubFileEntryRepository.findAll(basePath + GROOVY);
 				libFileEntry = gitHubFileEntryRepository.findAll(basePath + LIB);
 				fileList.add(gitHubFileEntryRepository.findOne(basePath + buildScriptName));
+				if (GRADLE_BUILD_FILE_NAME.equals(buildScriptName)) {
+					fileList.add(gitHubFileEntryRepository.findOne(basePath + GRADLE_SETTINGS_FILE_NAME));
+				}
 			} catch (IOException e) {
 				throw new NGrinderRuntimeException(e);
 			}
